@@ -176,28 +176,28 @@ export const App = () => {
   };
 
   return (
-    <div className="min-h-screen bg-[#0a1a2e] text-white">
+    <div className="min-h-screen bg-white text-[#0a1a2e]">
       <div className="mx-auto flex min-h-screen w-full max-w-[560px] flex-col px-4 py-4">
         <header className="text-center">
-          <p className="text-[0.72rem] font-semibold tracking-[0.25em] text-[#d4af37]">
+          <p className="text-[0.72rem] font-semibold tracking-[0.25em] text-slate-500">
             AGATE METALS • LIVE REFERENCE
           </p>
           <h1 className="mt-1 text-2xl font-bold leading-tight">
             Stack Value Card
           </h1>
-          <p className="mt-1 text-sm text-white/70">
+          <p className="mt-1 text-sm text-slate-500">
             Add every piece you own — see what the whole stack is worth
           </p>
           <div className="mt-3 flex flex-wrap items-center justify-center gap-2">
             {loading && prices === null ? (
-              <span className="inline-block h-4 w-40 animate-pulse rounded bg-white/20" />
+              <span className="inline-block h-4 w-40 animate-pulse rounded bg-slate-200" />
             ) : (
               METALS.map((entry) => {
                 const price = priceByMetal.get(entry.key);
                 return (
                   <span
                     key={entry.key}
-                    className="rounded-full border border-[#d4af37]/40 bg-white/5 px-3 py-1 text-xs font-semibold text-[#d4af37]"
+                    className="rounded-full border border-slate-200 bg-white px-3 py-1 text-xs font-semibold text-[#a07c1a]"
                   >
                     {entry.label}{' '}
                     {price?.priceUsdPerTroyOz === null ||
@@ -209,15 +209,17 @@ export const App = () => {
               })
             )}
           </div>
-          <p className="mt-1 text-[0.72rem] text-white/60">
+          <p className="mt-1 text-[0.72rem] text-slate-500">
             Updated {updatedLabel} • Refreshes every 60 seconds
           </p>
         </header>
 
         {loadError && prices === null ? (
-          <div className="mt-6 rounded-xl border border-red-400/50 bg-red-500/10 p-4 text-center">
-            <p className="font-semibold">Couldn&apos;t load live prices</p>
-            <p className="mt-1 text-sm text-white/70">
+          <div className="mt-6 rounded-xl border border-red-300 bg-red-50 p-4 text-center">
+            <p className="font-semibold text-red-900">
+              Couldn&apos;t load live prices
+            </p>
+            <p className="mt-1 text-sm text-red-800/70">
               Check your connection and try again. Reference prices may still be
               available once the app reconnects.
             </p>
@@ -236,7 +238,7 @@ export const App = () => {
           <>
             <section className="mt-4 space-y-3">
               {loading && prices === null ? (
-                <div className="rounded-2xl bg-white p-4">
+                <div className="rounded-2xl border border-slate-200 bg-white p-4">
                   <div className="h-10 animate-pulse rounded-lg bg-slate-200" />
                   <div className="mt-3 h-10 animate-pulse rounded-lg bg-slate-200" />
                   <div className="mt-3 h-16 animate-pulse rounded-lg bg-slate-200" />
@@ -248,11 +250,11 @@ export const App = () => {
                   return (
                     <div
                       key={line.id}
-                      className="rounded-2xl bg-white p-4 text-[#0a1a2e] shadow-lg"
+                      className="rounded-2xl border border-slate-200 bg-white p-4 text-[#0a1a2e] shadow-lg"
                     >
                       <div className="flex items-center justify-between gap-2">
                         <select
-                          className="cursor-pointer rounded-lg border border-slate-300 px-2 py-2 text-sm font-bold outline-none focus:border-[#d4af37]"
+                          className="cursor-pointer rounded-lg border border-slate-300 px-2 py-2 text-sm font-bold text-black outline-none focus:border-[#d4af37] focus:ring-2 focus:ring-[#d4af37]/40"
                           value={line.metal}
                           onChange={(e) => {
                             const value = e.target.value;
@@ -293,7 +295,7 @@ export const App = () => {
                             WEIGHT (EACH)
                           </span>
                           <input
-                            className="mt-1 w-full rounded-lg border border-slate-300 px-3 py-2 text-lg font-semibold outline-none focus:border-[#d4af37]"
+                            className="mt-1 w-full rounded-lg border border-slate-300 px-3 py-2 text-lg font-semibold text-black outline-none focus:border-[#d4af37] focus:ring-2 focus:ring-[#d4af37]/40"
                             type="number"
                             inputMode="decimal"
                             min="0"
@@ -311,7 +313,7 @@ export const App = () => {
                             QUANTITY
                           </span>
                           <input
-                            className="mt-1 w-full rounded-lg border border-slate-300 px-3 py-2 text-lg font-semibold outline-none focus:border-[#d4af37]"
+                            className="mt-1 w-full rounded-lg border border-slate-300 px-3 py-2 text-lg font-semibold text-black outline-none focus:border-[#d4af37] focus:ring-2 focus:ring-[#d4af37]/40"
                             type="number"
                             inputMode="numeric"
                             min="1"
@@ -334,7 +336,7 @@ export const App = () => {
                             <button
                               className={`cursor-pointer rounded-md px-2 py-2 text-sm font-semibold ${
                                 line.unit === 'oz'
-                                  ? 'bg-[#0a1a2e] text-white'
+                                  ? 'bg-black text-white'
                                   : 'text-slate-600'
                               }`}
                               onClick={() =>
@@ -346,7 +348,7 @@ export const App = () => {
                             <button
                               className={`cursor-pointer rounded-md px-2 py-2 text-sm font-semibold ${
                                 line.unit === 'g'
-                                  ? 'bg-[#0a1a2e] text-white'
+                                  ? 'bg-black text-white'
                                   : 'text-slate-600'
                               }`}
                               onClick={() => updateLine(line.id, { unit: 'g' })}
@@ -360,7 +362,7 @@ export const App = () => {
                             PURITY %
                           </span>
                           <input
-                            className="mt-1 w-full rounded-lg border border-slate-300 px-3 py-2 text-lg font-semibold outline-none focus:border-[#d4af37]"
+                            className="mt-1 w-full rounded-lg border border-slate-300 px-3 py-2 text-lg font-semibold text-black outline-none focus:border-[#d4af37] focus:ring-2 focus:ring-[#d4af37]/40"
                             type="number"
                             inputMode="decimal"
                             min="0"
@@ -400,7 +402,7 @@ export const App = () => {
             </section>
 
             <button
-              className="mt-3 w-full cursor-pointer rounded-full border-2 border-[#d4af37] px-3 py-2.5 text-sm font-bold text-[#d4af37]"
+              className="mt-3 w-full cursor-pointer rounded-full border-2 border-[#0a1a2e] bg-white px-3 py-2.5 text-sm font-bold text-[#0a1a2e]"
               onClick={() =>
                 setLines((current) => [...current, newLine('silver')])
               }
@@ -408,14 +410,14 @@ export const App = () => {
               + Add a line
             </button>
 
-            <section className="mt-4 rounded-2xl bg-[#d4af37] p-4 text-center text-[#0a1a2e] shadow-lg">
+            <section className="mt-4 rounded-2xl bg-black p-4 text-center text-white shadow-lg">
               <p className="text-xs font-semibold tracking-[0.2em]">
                 TOTAL ESTIMATED VALUE
               </p>
-              <p className="mt-1 text-3xl font-bold">
+              <p className="mt-1 text-3xl font-bold text-[#d4af37]">
                 {hasPricedLine ? formatUsd(totals.totalValue) : '—'}
               </p>
-              <p className="mt-2 text-xs font-semibold tracking-[0.2em] text-[#0a1a2e]/60">
+              <p className="mt-2 text-xs font-semibold tracking-[0.2em] text-white/60">
                 TOTAL DEALER VALUE (95%)
               </p>
               <p className="text-xl font-semibold">
@@ -430,14 +432,14 @@ export const App = () => {
               </p>
               <div className="mt-3 grid grid-cols-2 gap-2">
                 <button
-                  className="cursor-pointer rounded-full bg-[#0a1a2e] px-3 py-2.5 text-sm font-bold text-white disabled:opacity-50"
+                  className="cursor-pointer rounded-full bg-[#d4af37] px-3 py-2.5 text-sm font-bold text-[#0a1a2e] disabled:opacity-50"
                   onClick={() => void shareAsPost()}
                   disabled={!hasPricedLine || sharing || !allLinesValid}
                 >
                   {sharing ? 'Sharing…' : 'Share as a post'}
                 </button>
                 <button
-                  className="cursor-pointer rounded-full border-2 border-[#0a1a2e] px-3 py-2.5 text-sm font-bold text-[#0a1a2e] disabled:opacity-50"
+                  className="cursor-pointer rounded-full border-2 border-white bg-black px-3 py-2.5 text-sm font-bold text-white disabled:opacity-50"
                   onClick={() => void copySummary()}
                   disabled={!hasPricedLine}
                 >
@@ -448,7 +450,7 @@ export const App = () => {
           </>
         )}
 
-        <footer className="mt-5 pb-2 text-center text-[0.72rem] leading-relaxed text-white/60">
+        <footer className="mt-5 pb-2 text-center text-[0.72rem] leading-relaxed text-slate-500">
           <p>
             All figures are estimates based on live reference prices — not
             quotes, and not financial advice. Rhodium has no free live source:
