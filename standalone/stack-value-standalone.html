@@ -1,0 +1,444 @@
+<!doctype html>
+<!--
+  Stack Value Card — standalone embeddable calculator
+  ==================================================
+  A single self-contained HTML file (no dependencies, no build step).
+  Drop it onto any web page as-is, or embed it in an <iframe>.
+  Built for bullionpricecheck.com and agatemetals.com.
+
+  THEME (Joe, Nov 20, 2026): LIGHT — white page background, dark text,
+  gold accents only (headers, buttons, key numbers). The Devvit/Reddit
+  app stays gold-on-navy; this website twin is white so it reads clean
+  on both light sites.
+
+  HOW TO EMBED
+  1. Save this file on your site (e.g. /stack-value-card.html) and link
+     to it, or paste its contents into an <iframe src="...">.
+  2. No API key is needed. Prices come from gold-api.com first, then
+     Yahoo Finance, then the built-in reference prices below.
+  3. Optional: set METALPRICEAPI_KEY to enable the metalpriceapi.com leg
+     (the only live source here that covers rhodium). Leave it empty to
+     skip that leg — the app works fine without it.
+
+  NOTES
+  - Yahoo Finance does not send CORS headers, so browsers usually block
+    that leg. gold-api.com does allow browser requests, so it carries the
+    live prices in practice. The chain is kept in the documented order
+    (gold-api → Yahoo → metalpriceapi → built-in reference) and any leg
+    that fails is skipped silently.
+  - Built-in reference prices are the verified Nov 20, 2026 values. They
+    only show when every live leg fails. Update them when they go stale.
+  - Rhodium has no free live source in this file: gold-api.com and Yahoo
+    Finance do not cover it. It uses metalpriceapi (if a key is set) or
+    the built-in reference price below; with neither, rhodium lines show
+    "no live price" instead of a guess.
+  - Holdings math reuses the Agate Metals Checker formula exactly:
+    value = spot $/troy oz x weight in troy oz x purity x quantity,
+    dealer value = 95% of the total. No premium is charged on a stack.
+  - All figures are estimates only — not quotes, not financial advice.
+-->
+<html lang="en">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0" />
+<title>Stack Value Card — What's your stack worth?</title>
+<style>
+  * { box-sizing: border-box; }
+  body { margin: 0; font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif; background: #ffffff; color: #0a1a2e; }
+  .svc { max-width: 640px; margin: 0 auto; padding: 16px; min-height: 100vh; display: flex; flex-direction: column; }
+  .svc header { text-align: center; }
+  .svc .kicker { font-size: 0.72rem; font-weight: 700; letter-spacing: 0.25em; color: #a8861a; margin: 0; }
+  .svc h1 { font-size: 1.5rem; line-height: 1.2; margin: 6px 0 0; color: #0a1a2e; }
+  .svc .sub { font-size: 0.9rem; color: #475569; margin: 6px 0 0; }
+  .svc .ticker { display: flex; flex-wrap: wrap; justify-content: center; gap: 6px; margin-top: 12px; }
+  .svc .ticker .chip { padding: 6px 12px; border: 1px solid #e2c15a; border-radius: 999px; background: #fdf8e7; font-size: 0.8rem; font-weight: 600; color: #0a1a2e; }
+  .svc .ticker .chip b { color: #a8861a; }
+  .svc .updated { font-size: 0.72rem; color: #64748b; margin: 8px 0 0; }
+  .svc .line { background: #f8fafc; border: 1px solid #e2e8f0; border-radius: 16px; padding: 16px; margin-top: 12px; }
+  .svc .line-head { display: flex; align-items: center; justify-content: space-between; gap: 8px; }
+  .svc .line-head select { cursor: pointer; border: 1px solid #cbd5e1; border-radius: 8px; padding: 8px; font-size: 0.9rem; font-weight: 700; background: #fff; color: #0a1a2e; }
+  .svc .line-head .val { font-weight: 700; white-space: nowrap; }
+  .svc .line-head .rm { cursor: pointer; border: 0; border-radius: 999px; background: #e2e8f0; color: #0a1a2e; padding: 4px 10px; font-weight: 700; }
+  .svc .row { display: grid; grid-template-columns: 1fr 1fr; gap: 12px; margin-top: 12px; }
+  .svc label { display: block; }
+  .svc .lbl { font-size: 0.72rem; font-weight: 700; letter-spacing: .05em; color: #64748b; }
+  .svc input[type="number"] { width: 100%; margin-top: 4px; padding: 8px 12px; font-size: 1.1rem; font-weight: 600; border: 1px solid #cbd5e1; border-radius: 8px; outline: none; background: #fff; color: #0a1a2e; }
+  .svc input[type="number"]:focus { border-color: #d4af37; }
+  .svc .unit { display: grid; grid-template-columns: 1fr 1fr; gap: 4px; background: #e2e8f0; border-radius: 8px; padding: 4px; margin-top: 4px; }
+  .svc .unit button { cursor: pointer; border: 0; border-radius: 6px; padding: 8px 4px; font-size: 0.85rem; font-weight: 600; background: transparent; color: #475569; }
+  .svc .unit button.active { background: #0a1a2e; color: #fff; }
+  .svc .meta { font-size: 0.72rem; color: #64748b; margin: 8px 0 0; }
+  .svc .warn { font-size: 0.72rem; color: #b91c1c; font-weight: 600; margin: 8px 0 0; }
+  .svc .add { width: 100%; margin-top: 12px; cursor: pointer; border: 2px solid #d4af37; border-radius: 999px; padding: 10px 12px; font-size: 0.9rem; font-weight: 700; background: #fff; color: #a8861a; }
+  .svc .totals { background: #d4af37; color: #0a1a2e; border-radius: 16px; padding: 16px; text-align: center; margin-top: 16px; }
+  .svc .totals .cap { font-size: 0.72rem; font-weight: 700; letter-spacing: 0.2em; margin: 0; }
+  .svc .totals .big { font-size: 1.9rem; font-weight: 700; margin: 4px 0 0; }
+  .svc .totals .cap2 { font-size: 0.72rem; font-weight: 700; letter-spacing: 0.2em; margin: 10px 0 0; color: rgba(10,26,46,.6); }
+  .svc .totals .dealer { font-size: 1.25rem; font-weight: 700; margin: 0; }
+  .svc .totals .counts { font-size: 0.75rem; font-weight: 600; margin: 8px 0 0; }
+  .svc .actions { margin-top: 12px; }
+  .svc .actions button { width: 100%; cursor: pointer; border-radius: 999px; padding: 10px 12px; font-size: 0.9rem; font-weight: 700; background: #0a1a2e; color: #fff; border: 0; }
+  .svc .actions button:disabled { opacity: .5; cursor: default; }
+  .svc .error { margin-top: 16px; border: 1px solid rgba(248,113,113,.5); background: #fef2f2; border-radius: 12px; padding: 16px; text-align: center; }
+  .svc .error button { cursor: pointer; margin-top: 12px; background: #d4af37; color: #0a1a2e; border: 0; border-radius: 999px; padding: 8px 16px; font-weight: 700; }
+  .svc footer { margin-top: 20px; padding-bottom: 8px; text-align: center; font-size: 0.72rem; line-height: 1.6; color: #64748b; }
+  .svc footer a { color: #a8861a; }
+  .svc .skeleton { height: 40px; border-radius: 8px; background: #e2e8f0; animation: svc-pulse 1.2s ease-in-out infinite; margin-top: 12px; }
+  @keyframes svc-pulse { 0%,100% { opacity: 1; } 50% { opacity: .5; } }
+</style>
+</head>
+<body>
+<div class="svc" id="svc">
+  <header>
+    <p class="kicker">AGATE METALS • LIVE REFERENCE</p>
+    <h1>Stack Value Card</h1>
+    <p class="sub">Add every piece you own — see what the whole stack is worth</p>
+    <div class="ticker" id="svc-ticker"><span class="chip">Loading live prices…</span></div>
+    <p class="updated" id="svc-updated">Updated — • Refreshes every 60 seconds</p>
+  </header>
+
+  <div class="error" id="svc-error" hidden>
+    <b>Couldn’t load live prices</b>
+    <p style="margin:6px 0 0;font-size:.85rem">Check your connection and try again. Reference prices may still be available once the page reconnects.</p>
+    <button id="svc-retry" type="button">Try again</button>
+  </div>
+
+  <div id="svc-loading"><div class="skeleton"></div><div class="skeleton"></div></div>
+  <div id="svc-lines" hidden></div>
+
+  <button type="button" class="add" id="svc-add">+ Add a line</button>
+
+  <section class="totals" id="svc-totals">
+    <p class="cap">TOTAL ESTIMATED VALUE</p>
+    <p class="big" id="svc-total">—</p>
+    <p class="cap2">TOTAL DEALER VALUE (95%)</p>
+    <p class="dealer" id="svc-dealer">—</p>
+    <p class="counts" id="svc-counts"></p>
+    <div class="actions">
+      <button type="button" id="svc-copy">Copy summary</button>
+    </div>
+  </section>
+
+  <footer>
+    <p style="margin:0">All figures are estimates based on live reference prices — not quotes, and not financial advice. Rhodium has no free live source: rhodium lines show “no live price” unless a reference price or a Metal Price API key covers it.</p>
+    <p style="margin:8px 0 0">
+      <a href="https://agatepreciousmetals.com/terms.html" target="_blank" rel="noopener">Terms</a>
+      &nbsp;•&nbsp; <a href="https://agatepreciousmetals.com/privacy.html" target="_blank" rel="noopener">Privacy</a>
+      &nbsp;•&nbsp; <a href="https://agatemetals.com/" target="_blank" rel="noopener">agatemetals.com</a>
+      &nbsp;•&nbsp; <a href="https://bullionpricecheck.com/" target="_blank" rel="noopener">Bullion Price Check</a>
+    </p>
+  </footer>
+</div>
+
+<script>
+(function () {
+  'use strict';
+
+  // Optional metalpriceapi.com key. Leave empty to skip that leg.
+  var METALPRICEAPI_KEY = '';
+
+  var TROY_OZ_GRAMS = 31.1034768;
+  var DEALER_FACTOR = 0.95;
+
+  // Built-in reference prices (USD per troy oz), verified Nov 20, 2026.
+  // Used ONLY when every live leg fails. Update them when they go stale.
+  var REFERENCE_PRICES = {
+    gold: 3559.17,
+    silver: 41.88,
+    platinum: 1303.20,
+    palladium: 888.25,
+    rhodium: null
+  };
+
+  var METALS = [
+    { key: 'silver', label: 'Silver', code: 'XAG', yahoo: 'SI=F' },
+    { key: 'gold', label: 'Gold', code: 'XAU', yahoo: 'GC=F' },
+    { key: 'platinum', label: 'Platinum', code: 'XPT', yahoo: 'PL=F' },
+    { key: 'palladium', label: 'Palladium', code: 'XPD', yahoo: 'PA=F' },
+    { key: 'rhodium', label: 'Rhodium', code: 'XRH', yahoo: null }
+  ];
+
+  var LABELS = { silver: 'Silver', gold: 'Gold', platinum: 'Platinum', palladium: 'Palladium', rhodium: 'Rhodium' };
+
+  var state = {
+    prices: null,
+    fetchedAt: null,
+    loading: true,
+    error: false,
+    lines: [
+      { id: 1, metal: 'gold', weight: 1, unit: 'oz', purity: 99.9, quantity: 1 },
+      { id: 2, metal: 'silver', weight: 1, unit: 'oz', purity: 99.9, quantity: 1 }
+    ],
+    nextId: 3
+  };
+
+  function $(id) { return document.getElementById(id); }
+
+  function fmtUsd(v) {
+    return v.toLocaleString('en-US', { style: 'currency', currency: 'USD', minimumFractionDigits: 2, maximumFractionDigits: 2 });
+  }
+
+  function fetchJson(url, timeoutMs) {
+    return new Promise(function (resolve) {
+      var done = false;
+      var timer = setTimeout(function () { if (!done) { done = true; resolve(null); } }, timeoutMs || 5000);
+      fetch(url, { headers: { 'Accept': 'application/json' } })
+        .then(function (res) { if (!res.ok) { throw new Error('http ' + res.status); } return res.json(); })
+        .then(function (data) { if (!done) { done = true; clearTimeout(timer); resolve(data); } })
+        .catch(function () { if (!done) { done = true; clearTimeout(timer); resolve(null); } });
+    });
+  }
+
+  function yahooPrice(symbol) {
+    return fetchJson('https://query1.finance.yahoo.com/v8/finance/chart/' + symbol + '?range=1d&interval=1m')
+      .then(function (data) {
+        try {
+          var p = data.chart.result[0].meta.regularMarketPrice;
+          return (typeof p === 'number' && isFinite(p)) ? p : null;
+        } catch (e) { return null; }
+      });
+  }
+
+  function goldApiPrice(code) {
+    return fetchJson('https://api.gold-api.com/price/' + code)
+      .then(function (data) {
+        return (data && typeof data.price === 'number' && isFinite(data.price)) ? data.price : null;
+      });
+  }
+
+  function metalPriceApiPrices() {
+    if (!METALPRICEAPI_KEY) { return Promise.resolve({}); }
+    return fetchJson('https://api.metalpriceapi.com/v1/latest?api_key=' + encodeURIComponent(METALPRICEAPI_KEY) + '&base=USD&currencies=XAU,XAG,XPT,XPD,XRH')
+      .then(function (data) {
+        if (!data || data.success !== true || !data.rates) { return {}; }
+        var out = {};
+        var byCode = { XAG: 'silver', XAU: 'gold', XPT: 'platinum', XPD: 'palladium', XRH: 'rhodium' };
+        Object.keys(byCode).forEach(function (code) {
+          var v = data.rates[code];
+          if (typeof v === 'number' && isFinite(v)) { out[byCode[code]] = v; }
+        });
+        return out;
+      });
+  }
+
+  // Price chain per metal: gold-api → Yahoo → metalpriceapi (if key) → built-in reference.
+  function loadPrices() {
+    return metalPriceApiPrices().then(function (mpa) {
+      var jobs = METALS.map(function (m) {
+        return goldApiPrice(m.code).then(function (price) {
+          if (price !== null) { return { key: m.key, price: price, source: 'gold-api' }; }
+          if (!m.yahoo) { return nextLeg(m, mpa); }
+          return yahooPrice(m.yahoo).then(function (yp) {
+            if (yp !== null) { return { key: m.key, price: yp, source: 'yahoo' }; }
+            return nextLeg(m, mpa);
+          });
+        });
+      });
+      return Promise.all(jobs).then(function (results) {
+        var prices = {};
+        var fetchedAt = new Date().toISOString();
+        results.forEach(function (r) {
+          prices[r.key] = { price: r.price, source: r.source, updatedAt: r.price === null ? null : fetchedAt };
+        });
+        state.prices = prices;
+        state.fetchedAt = fetchedAt;
+        state.loading = false;
+        state.error = false;
+        render();
+      });
+    }).catch(function () {
+      state.loading = false;
+      state.error = true;
+      render();
+    });
+  }
+
+  function nextLeg(m, mpa) {
+    if (mpa[m.key] !== undefined) { return { key: m.key, price: mpa[m.key], source: 'metalpriceapi' }; }
+    var ref = REFERENCE_PRICES[m.key];
+    if (typeof ref === 'number') { return { key: m.key, price: ref, source: 'reference' }; }
+    return { key: m.key, price: null, source: 'none' };
+  }
+
+  function toTroyOz(weight, unit) { return unit === 'g' ? weight / TROY_OZ_GRAMS : weight; }
+
+  function lineValue(line) {
+    if (!state.prices) { return null; }
+    var entry = state.prices[line.metal];
+    if (!entry || entry.price === null) { return null; }
+    if (!isFinite(line.weight) || line.weight <= 0) { return null; }
+    if (!isFinite(line.purity) || line.purity <= 0 || line.purity > 100) { return null; }
+    if (!isFinite(line.quantity) || line.quantity <= 0 || Math.floor(line.quantity) !== line.quantity) { return null; }
+    return entry.price * toTroyOz(line.weight, line.unit) * (line.purity / 100) * line.quantity;
+  }
+
+  function totals() {
+    var total = 0, priced = 0, unpriced = 0;
+    state.lines.forEach(function (line) {
+      var v = lineValue(line);
+      if (v === null) { unpriced += 1; } else { total += v; priced += 1; }
+    });
+    return { total: total, dealer: total * DEALER_FACTOR, priced: priced, unpriced: unpriced };
+  }
+
+  function render() {
+    var ticker = $('svc-ticker');
+    ticker.innerHTML = '';
+    if (state.loading && !state.prices) {
+      var chip = document.createElement('span');
+      chip.className = 'chip';
+      chip.textContent = 'Loading live prices…';
+      ticker.appendChild(chip);
+    } else {
+      METALS.forEach(function (m) {
+        var entry = state.prices ? state.prices[m.key] : null;
+        var c = document.createElement('span');
+        c.className = 'chip';
+        c.textContent = m.label + ' ' + (entry && entry.price !== null ? fmtUsd(entry.price) + ' / oz' : '— no live price');
+        ticker.appendChild(c);
+      });
+    }
+    $('svc-updated').textContent = 'Updated ' + (state.fetchedAt ? new Date(state.fetchedAt).toLocaleTimeString('en-US', { hour12: false }) : '—') + ' • Refreshes every 60 seconds';
+    $('svc-error').hidden = !(state.error && !state.prices);
+    $('svc-loading').hidden = !(state.loading && !state.prices);
+    $('svc-lines').hidden = state.loading && !state.prices;
+
+    var wrap = $('svc-lines');
+    wrap.innerHTML = '';
+    state.lines.forEach(function (line) {
+      var value = lineValue(line);
+      var entry = state.prices ? state.prices[line.metal] : null;
+      var card = document.createElement('div');
+      card.className = 'line';
+
+      var head = document.createElement('div');
+      head.className = 'line-head';
+      var sel = document.createElement('select');
+      sel.setAttribute('aria-label', 'Metal');
+      METALS.forEach(function (m) {
+        var opt = document.createElement('option');
+        opt.value = m.key;
+        opt.textContent = m.label;
+        if (m.key === line.metal) { opt.selected = true; }
+        sel.appendChild(opt);
+      });
+      sel.addEventListener('change', function () { line.metal = sel.value; render(); });
+      var val = document.createElement('span');
+      val.className = 'val';
+      val.textContent = value === null ? '— no live price' : fmtUsd(value);
+      var rm = document.createElement('button');
+      rm.type = 'button';
+      rm.className = 'rm';
+      rm.textContent = '✕';
+      rm.setAttribute('aria-label', 'Remove this line');
+      rm.addEventListener('click', function () {
+        state.lines = state.lines.filter(function (x) { return x.id !== line.id; });
+        render();
+      });
+      head.appendChild(sel); head.appendChild(val); head.appendChild(rm);
+      card.appendChild(head);
+
+      var row1 = document.createElement('div');
+      row1.className = 'row';
+      row1.appendChild(numField('WEIGHT (EACH)', line.weight, function (v) { line.weight = v; render(); }));
+      row1.appendChild(numField('QUANTITY', line.quantity, function (v) { line.quantity = v; render(); }, 1));
+      card.appendChild(row1);
+
+      var row2 = document.createElement('div');
+      row2.className = 'row';
+      var unitWrap = document.createElement('div');
+      var unitLbl = document.createElement('span');
+      unitLbl.className = 'lbl';
+      unitLbl.textContent = 'UNIT';
+      var unit = document.createElement('div');
+      unit.className = 'unit';
+      var ozBtn = document.createElement('button');
+      ozBtn.type = 'button';
+      ozBtn.textContent = 'Troy Oz';
+      ozBtn.className = line.unit === 'oz' ? 'active' : '';
+      ozBtn.addEventListener('click', function () { line.unit = 'oz'; render(); });
+      var gBtn = document.createElement('button');
+      gBtn.type = 'button';
+      gBtn.textContent = 'Gram';
+      gBtn.className = line.unit === 'g' ? 'active' : '';
+      gBtn.addEventListener('click', function () { line.unit = 'g'; render(); });
+      unit.appendChild(ozBtn); unit.appendChild(gBtn);
+      unitWrap.appendChild(unitLbl); unitWrap.appendChild(unit);
+      row2.appendChild(unitWrap);
+      row2.appendChild(numField('PURITY %', line.purity, function (v) { line.purity = v; render(); }));
+      card.appendChild(row2);
+
+      var meta = document.createElement('p');
+      meta.className = 'meta';
+      meta.textContent = LABELS[line.metal] + ' ' + (entry && entry.price !== null ? fmtUsd(entry.price) + ' / oz' : '— no live price') + ' • ' + (entry ? (entry.source === 'reference' ? 'Reference price' : entry.source === 'none' ? 'Unavailable' : 'Live') : '—');
+      card.appendChild(meta);
+      if (!isFinite(line.weight) || line.weight <= 0 || !isFinite(line.purity) || line.purity <= 0 || line.purity > 100 || !isFinite(line.quantity) || line.quantity <= 0) {
+        var warn = document.createElement('p');
+        warn.className = 'warn';
+        warn.textContent = 'Check this line: weight and purity must be above 0, purity at most 100%, quantity a whole number above 0.';
+        card.appendChild(warn);
+      }
+      wrap.appendChild(card);
+    });
+
+    var t = totals();
+    $('svc-total').textContent = t.priced > 0 ? fmtUsd(t.total) : '—';
+    $('svc-dealer').textContent = t.priced > 0 ? fmtUsd(t.dealer) : '—';
+    $('svc-counts').textContent = state.lines.length + ' line' + (state.lines.length === 1 ? '' : 's') + ' • ' + t.priced + ' priced' + (t.unpriced > 0 ? ' • ' + t.unpriced + ' line' + (t.unpriced === 1 ? '' : 's') + ' with no live price — not counted in the total' : '');
+    $('svc-copy').disabled = t.priced === 0;
+  }
+
+  function numField(label, value, onInput, min) {
+    var wrap = document.createElement('label');
+    var lbl = document.createElement('span');
+    lbl.className = 'lbl';
+    lbl.textContent = label;
+    var input = document.createElement('input');
+    input.type = 'number';
+    input.min = String(min === undefined ? 0 : min);
+    input.step = 'any';
+    input.inputMode = 'decimal';
+    input.value = String(value);
+    input.addEventListener('input', function () { onInput(parseFloat(input.value)); });
+    wrap.appendChild(lbl);
+    wrap.appendChild(input);
+    return wrap;
+  }
+
+  function bind() {
+    $('svc-add').addEventListener('click', function () {
+      state.lines.push({ id: state.nextId++, metal: 'silver', weight: 1, unit: 'oz', purity: 99.9, quantity: 1 });
+      render();
+    });
+    $('svc-retry').addEventListener('click', function () {
+      state.loading = true;
+      state.error = false;
+      render();
+      loadPrices();
+    });
+    $('svc-copy').addEventListener('click', function () {
+      var t = totals();
+      if (t.priced === 0) { return; }
+      var parts = state.lines.map(function (line) {
+        var v = lineValue(line);
+        return line.quantity + ' x ' + line.weight + ' ' + (line.unit === 'g' ? 'g' : 'troy oz') + ' ' + LABELS[line.metal] + ' (' + line.purity + '%) — ' + (v === null ? 'no live price' : fmtUsd(v));
+      });
+      var summary = 'My stack is worth about ' + fmtUsd(t.total) + ' (' + fmtUsd(t.dealer) + ' dealer value). ' + parts.join('; ') + '. Estimated with Stack Value Card by Agate Metals — estimates only, not financial advice.';
+      var done = function (ok) {
+        $('svc-copy').textContent = ok ? 'Copied!' : 'Copy failed — select the text manually';
+        setTimeout(function () { $('svc-copy').textContent = 'Copy summary'; }, 2000);
+      };
+      if (navigator.clipboard && navigator.clipboard.writeText) {
+        navigator.clipboard.writeText(summary).then(function () { done(true); }, function () { done(false); });
+      } else { done(false); }
+    });
+  }
+
+  bind();
+  render();
+  loadPrices();
+  setInterval(loadPrices, 60000);
+})();
+</script>
+</body>
+</html>
